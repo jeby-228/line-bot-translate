@@ -4,6 +4,9 @@ FROM rust:bookworm AS builder
 
 WORKDIR /app
 
+ENV CARGO_NET_RETRY=10 \
+    CARGO_HTTP_TIMEOUT=120
+
 # 先複製依賴清單，讓 Docker layer cache 在程式碼未變動時直接重用
 COPY Cargo.toml Cargo.lock ./
 # 建立假 main 以快取依賴編譯
