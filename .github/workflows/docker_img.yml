@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload Trivy results to Security tab (scheduled)
         uses: github/codeql-action/upload-sarif@v4
-        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && always()
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && always() && hashFiles('trivy-docker-results.sarif') != ''
         with:
           sarif_file: "trivy-docker-results.sarif"
 
@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload Trivy results to Security tab
         uses: github/codeql-action/upload-sarif@v4
-        if: (github.event_name != 'schedule' && github.event_name != 'workflow_dispatch') && always()
+        if: (github.event_name != 'schedule' && github.event_name != 'workflow_dispatch') && always() && hashFiles('trivy-docker-results.sarif') != ''
         with:
           sarif_file: "trivy-docker-results.sarif"
 

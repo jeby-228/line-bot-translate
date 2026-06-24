@@ -1,7 +1,10 @@
 # ── Stage 1: builder ──────────────────────────────────────────────────────────
-FROM rust:alpine AS builder
+FROM rust:bookworm-slim AS builder
 
-RUN apk add --no-cache musl-dev
+# cmake + perl 是 aws-lc-rs (reqwest TLS) 的編譯依賴
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake perl pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -17,9 +20,11 @@ COPY src ./src
 RUN touch src/main.rs && cargo build --release
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
-FROM alpine:3.21
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
