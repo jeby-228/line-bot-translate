@@ -1,0 +1,25 @@
+# Rust 編譯產物（最大宗，一定要排除）
+target/
+
+# Git
+.git/
+.gitignore
+
+# GitHub Actions
+.github/
+
+# 環境變數（絕對不能打包進 image）
+.env
+.env.*
+!.env.example
+
+# Docker 相關（不需要打包自己）
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# 開發工具
+justfile
+
+# 測試
+tests/
