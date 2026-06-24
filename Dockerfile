@@ -15,17 +15,16 @@ RUN mkdir src && echo 'fn main(){}' > src/main.rs && \
 COPY src ./src
 RUN touch src/main.rs && cargo build --release
 
-# ── Stage 2: runtime ──────────────────────────────────────────────────────────
-FROM debian:bookworm-slim
+# ── Stage 2: busybox（取出靜態 wget 供 healthcheck 使用）────────────────────
+FROM busybox:stable-musl AS busybox
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl \
-    && rm -rf /var/lib/apt/lists/*
+# ── Stage 3: runtime ─────────────────────────────────────────────────────────
+# distroless/cc 只含最小化 glibc，無 shell / perl / curl，大幅降低攻擊面
+FROM gcr.io/distroless/cc-debian12
 
-WORKDIR /app
-
-COPY --from=builder /app/target/release/line-bot-translate .
+COPY --from=busybox /bin/wget /bin/wget
+COPY --from=builder /app/target/release/line-bot-translate /app/line-bot-translate
 
 EXPOSE 8000
 
-CMD ["./line-bot-translate"]
+CMD ["/app/line-bot-translate"]

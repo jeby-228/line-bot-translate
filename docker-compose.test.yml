@@ -9,7 +9,7 @@ services:
       LINE_ACCESS_TOKEN: "test-token"
       # 刻意不設定 LINE_CHANNEL_SECRET，使簽章驗證在測試時自動略過
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8000/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/"]
       interval: 5s
       timeout: 5s
       retries: 10
