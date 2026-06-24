@@ -12,8 +12,8 @@ impl Config {
     pub fn from_env() -> Self {
         let line_access_token =
             env::var("LINE_ACCESS_TOKEN").expect("LINE_ACCESS_TOKEN must be set");
-        let line_channel_secret =
-            env::var("LINE_CHANNEL_SECRET").expect("LINE_CHANNEL_SECRET must be set");
+        // 空字串表示開發/測試環境，signature 驗證會自動略過
+        let line_channel_secret = env::var("LINE_CHANNEL_SECRET").unwrap_or_default();
         let groq_api_key = env::var("GROQ_API_KEY").expect("GROQ_API_KEY must be set");
         let groq_model =
             env::var("GROQ_MODEL").unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
