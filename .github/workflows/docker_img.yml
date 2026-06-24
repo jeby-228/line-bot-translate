@@ -1,9 +1,12 @@
 name: Docker Image
 
 on:
+  # main branch: 等 CI workflow 成功後才觸發，確保品質把關
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
   push:
-    branches:
-      - main
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
   pull_request:
@@ -16,6 +19,8 @@ on:
 jobs:
   build-docker:
     runs-on: ubuntu-latest
+    # workflow_run 事件：只有 CI 成功才繼續；其他事件（tag、PR、schedule）直接執行
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
