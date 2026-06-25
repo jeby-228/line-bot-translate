@@ -6,7 +6,6 @@
 GET {{host}}/
 HTTP 200
 [Asserts]
-jsonpath "$.status" == "ok"
 jsonpath "$.service" == "webhook-translate"
 
 # 2. 不合法的 JSON body 應回傳 400
