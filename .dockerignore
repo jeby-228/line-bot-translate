@@ -4,6 +4,7 @@ target/
 # Git
 .git/
 .gitignore
+.gitattributes
 
 # GitHub Actions
 .github/

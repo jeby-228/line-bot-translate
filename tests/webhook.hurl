@@ -13,7 +13,7 @@ jsonpath "$.service" == "webhook-translate"
 POST {{host}}/webhook
 Content-Type: application/json
 ```
-{ this is not valid json
+  this is not valid json
 ```
 HTTP 400
 

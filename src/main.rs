@@ -13,26 +13,12 @@ use axum::{
     routing::{get, post},
 };
 use serde_json::{Value, json};
+use tower_http::trace::TraceLayer;
 use tracing::{error, info};
-use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
 
 use config::Config;
 use groq::client::translate;
 use line::{reply::send_reply, signature::verify, webhook::LinePayload};
-
-// ── OpenAPI spec ──────────────────────────────────────────────────────────────
-
-#[derive(OpenApi)]
-#[openapi(
-    info(
-        title = "webhook-translate",
-        version = "0.1.0",
-        description = "LINE Webhook 中↔印尼文雙向翻譯服務"
-    ),
-    paths(health_check, webhook_handler)
-)]
-struct ApiDoc;
 
 // ── AppState ──────────────────────────────────────────────────────────────────
 
@@ -48,6 +34,9 @@ async fn main() {
     dotenvy::dotenv().ok();
 
     tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+        )
         .with_target(false)
         .compact()
         .init();
@@ -61,14 +50,13 @@ async fn main() {
     let state = Arc::new(AppState { config, http });
 
     let app = Router::new()
-        .merge(SwaggerUi::new("/docs").url("/docs/openapi.json", ApiDoc::openapi()))
         .route("/", get(health_check))
         .route("/webhook", post(webhook_handler))
+        .layer(TraceLayer::new_for_http())
         .with_state(state);
 
     let addr = "0.0.0.0:8000";
     info!("Starting server on {}", addr);
-    info!("Swagger UI: http://{}/docs", addr);
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
@@ -80,37 +68,14 @@ async fn main() {
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 /// 健康檢查
-#[utoipa::path(
-    get,
-    path = "/",
-    responses(
-        (status = 200, description = "服務運作正常", body = Value)
-    )
-)]
 async fn health_check() -> Json<Value> {
-    Json(json!({ "status": "ok", "service": "webhook-translate" }))
+    Json(json!({ "service": "webhook-translate" }))
 }
 
 /// LINE Webhook 入口
 ///
 /// 接收 LINE Platform 傳來的事件，對文字訊息進行中↔印尼文翻譯後回覆。
 /// 需帶有正確的 `X-Line-Signature` header（開發環境可不帶）。
-#[utoipa::path(
-    post,
-    path = "/webhook",
-    request_body(
-        content = Value,
-        description = "LINE Webhook 事件 payload",
-        content_type = "application/json"
-    ),
-    params(
-        ("X-Line-Signature" = Option<String>, Header, description = "LINE HMAC-SHA256 簽章")
-    ),
-    responses(
-        (status = 200, description = "處理成功", body = Value),
-        (status = 400, description = "簽章驗證失敗或非法 JSON")
-    )
-)]
 async fn webhook_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
