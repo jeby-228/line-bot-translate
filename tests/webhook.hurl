@@ -16,17 +16,16 @@ Content-Type: application/json
 ```
 HTTP 400
 
-# 3. 空的 events 陣列應回傳 200（不呼叫任何外部 API）
+# 3. 空的 events 陣列應回傳 204（不呼叫任何外部 API）
 POST {{host}}/webhook
 Content-Type: application/json
 {
   "events": []
 }
-HTTP 200
+HTTP 204
 [Asserts]
-jsonpath "$.status" == "ok"
 
-# 4. 非 message 類型事件應被略過並回傳 200
+# 4. 非 message 類型事件應被略過並回傳 204
 POST {{host}}/webhook
 Content-Type: application/json
 {
@@ -34,11 +33,10 @@ Content-Type: application/json
     { "type": "follow", "replyToken": "dummy-token" }
   ]
 }
-HTTP 200
+HTTP 204
 [Asserts]
-jsonpath "$.status" == "ok"
 
-# 5. message 事件但非文字類型，應被略過並回傳 200
+# 5. message 事件但非文字類型，應被略過並回傳 204
 POST {{host}}/webhook
 Content-Type: application/json
 {
@@ -46,6 +44,5 @@ Content-Type: application/json
     { "type": "message", "replyToken": "dummy-token", "message": { "type": "sticker" } }
   ]
 }
-HTTP 200
+HTTP 204
 [Asserts]
-jsonpath "$.status" == "ok"

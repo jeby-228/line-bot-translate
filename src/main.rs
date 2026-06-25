@@ -10,6 +10,7 @@ use axum::{
     extract::State,
     http::{HeaderMap, StatusCode},
     response::Json,
+    response::NoContent,
     routing::{get, post},
 };
 use serde_json::{Value, json};
@@ -92,7 +93,7 @@ async fn webhook_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     body: Bytes,
-) -> Result<Json<Value>, StatusCode> {
+) -> Result<NoContent, StatusCode> {
     let signature = headers
         .get("x-line-signature")
         .and_then(|v| v.to_str().ok())
@@ -161,5 +162,5 @@ async fn webhook_handler(
         }
     }
 
-    Ok(Json(json!({ "status": "ok" })))
+    Ok(NoContent)
 }
