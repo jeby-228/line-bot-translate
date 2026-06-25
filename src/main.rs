@@ -2,7 +2,7 @@ mod config;
 mod groq;
 mod line;
 
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 use axum::{
     Router,
@@ -13,8 +13,8 @@ use axum::{
     routing::{get, post},
 };
 use serde_json::{Value, json};
-use tower_http::trace::TraceLayer;
-use tracing::{error, info};
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tracing::{Level, error, info};
 
 use config::Config;
 use groq::client::translate;
@@ -38,8 +38,15 @@ async fn main() {
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .with_target(false)
+        .with_ansi(false)
+        .with_writer(std::io::stdout)
         .compact()
         .init();
+
+    info!(
+        rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "(unset)".into()),
+        "tracing initialized"
+    );
 
     let config = Config::from_env();
     let http = reqwest::Client::builder()
@@ -52,11 +59,16 @@ async fn main() {
     let app = Router::new()
         .route("/", get(health_check))
         .route("/webhook", post(webhook_handler))
-        .layer(TraceLayer::new_for_http())
-        .with_state(state);
+        .with_state(state)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(DefaultOnResponse::new().level(Level::INFO)),
+        );
 
-    let addr = "0.0.0.0:8000";
-    info!("Starting server on {}", addr);
+    let port = env::var("PORT").unwrap_or_else(|_| "8000".into());
+    let addr = format!("0.0.0.0:{port}");
+    info!("Starting server on {addr}");
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
@@ -69,7 +81,7 @@ async fn main() {
 
 /// 健康檢查
 async fn health_check() -> Json<Value> {
-    Json(json!({ "service": "webhook-translate" }))
+    Json(json!({"service": "webhook-translate" }))
 }
 
 /// LINE Webhook 入口
@@ -98,6 +110,8 @@ async fn webhook_handler(
             return Err(StatusCode::BAD_REQUEST);
         }
     };
+
+    info!(events = payload.events.len(), "webhook received");
 
     for event in &payload.events {
         if event.event_type != "message" {
