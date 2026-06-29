@@ -35,14 +35,14 @@ pub async fn webhook_handler(
     if !state.config.skip_line_signature_verify
         && !verify(&state.config.line_channel_secret, &body, signature)
     {
-        error!("Invalid LINE signature");
+        error!(reason = "invalid_signature", "webhook rejected");
         return Err(StatusCode::BAD_REQUEST);
     }
 
     let payload: LinePayload = match serde_json::from_slice(&body) {
         Ok(p) => p,
         Err(e) => {
-            error!("Invalid JSON body: {}", e);
+            error!(reason = "invalid_json", error = %e, "webhook rejected");
             return Err(StatusCode::BAD_REQUEST);
         }
     };
