@@ -147,3 +147,56 @@ pub async fn translate(
     info!("Groq raw output: {:?}", &raw[..raw.len().min(200)]);
     extract_translation(&raw)
 }
+
+const GROQ_MODELS_URL: &str = "https://api.groq.com/openai/v1/models";
+
+#[derive(Debug, Serialize)]
+pub struct ApiKeyCheck {
+    pub valid: bool,
+    pub message: String,
+}
+
+/// 驗證 Groq API key 是否有效。測試用 dummy key 不會發出外部請求。
+pub async fn check_api_key(http: &reqwest::Client, api_key: &str) -> ApiKeyCheck {
+    if api_key == "test-dummy-key" {
+        return ApiKeyCheck {
+            valid: false,
+            message: "test dummy key (skipped live validation)".into(),
+        };
+    }
+
+    let resp = match http.get(GROQ_MODELS_URL).bearer_auth(api_key).send().await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("Groq API key check HTTP error: {}", e);
+            let err_msg = e.to_string();
+            return ApiKeyCheck {
+                valid: false,
+                message: format!("connection failed: {}", &err_msg[..err_msg.len().min(100)]),
+            };
+        }
+    };
+
+    match resp.status().as_u16() {
+        200 => ApiKeyCheck {
+            valid: true,
+            message: "ok".into(),
+        },
+        401 => ApiKeyCheck {
+            valid: false,
+            message: "invalid API key".into(),
+        },
+        status => {
+            let body = resp.text().await.unwrap_or_default();
+            error!(
+                "Groq API key check failed: status={} body={}",
+                status,
+                &body[..body.len().min(200)]
+            );
+            ApiKeyCheck {
+                valid: false,
+                message: format!("groq returned {status}"),
+            }
+        }
+    }
+}

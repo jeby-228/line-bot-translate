@@ -4,19 +4,13 @@ use axum::{
     body::Bytes,
     extract::State,
     http::{HeaderMap, StatusCode},
-    response::{Json, NoContent},
+    response::NoContent,
 };
-use serde_json::{Value, json};
 use tracing::{error, info};
 
 use crate::app::AppState;
 use crate::line::{signature::verify, webhook::LinePayload};
 use crate::service::dispatch_events;
-
-/// 健康檢查
-pub async fn health_check() -> Json<Value> {
-    Json(json!({"service": "webhook-translate" }))
-}
 
 /// LINE Webhook 入口
 ///

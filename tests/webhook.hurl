@@ -46,3 +46,10 @@ Content-Type: application/json
 }
 HTTP 204
 [Asserts]
+
+# 6. 確認 API key 檢查端點（測試環境使用 dummy key，不呼叫真實 Groq API）
+GET {{host}}/check-api-key
+HTTP 200
+[Asserts]
+jsonpath "$.groq.valid" == false
+jsonpath "$.groq.message" exists

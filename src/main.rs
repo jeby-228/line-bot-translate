@@ -16,7 +16,7 @@ use tracing::{Level, info};
 
 use app::AppState;
 use config::Config;
-use handlers::{health_check, webhook_handler};
+use handlers::{check_api_key, health_check, webhook_handler};
 
 #[tokio::main]
 async fn main() {
@@ -48,6 +48,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(health_check))
         .route("/webhook", post(webhook_handler))
+        .route("/check-api-key", get(check_api_key))
         .with_state(state)
         .layer(
             TraceLayer::new_for_http()
