@@ -1,34 +1,22 @@
+mod app;
 mod config;
 mod groq;
+mod handlers;
 mod line;
+mod service;
 
 use std::{env, sync::Arc};
 
 use axum::{
     Router,
-    body::Bytes,
-    extract::State,
-    http::{HeaderMap, StatusCode},
-    response::Json,
-    response::NoContent,
     routing::{get, post},
 };
-use serde_json::{Value, json};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
-use tracing::{Level, error, info};
+use tracing::{Level, info};
 
+use app::AppState;
 use config::Config;
-use groq::client::translate;
-use line::{reply::send_reply, signature::verify, webhook::LinePayload};
-
-// ── AppState ──────────────────────────────────────────────────────────────────
-
-struct AppState {
-    config: Config,
-    http: reqwest::Client,
-}
-
-// ── Entry point ───────────────────────────────────────────────────────────────
+use handlers::{health_check, webhook_handler};
 
 #[tokio::main]
 async fn main() {
@@ -76,98 +64,4 @@ async fn main() {
         .expect("Failed to bind address");
 
     axum::serve(listener, app).await.expect("Server error");
-}
-
-// ── Handlers ──────────────────────────────────────────────────────────────────
-
-/// 健康檢查
-async fn health_check() -> Json<Value> {
-    Json(json!({"service": "webhook-translate" }))
-}
-
-/// LINE Webhook 入口
-///
-/// 接收 LINE Platform 傳來的事件，對文字訊息進行中↔印尼文翻譯後回覆。
-/// 需帶有正確的 `X-Line-Signature` header（開發環境可不帶）。
-async fn webhook_handler(
-    State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
-    body: Bytes,
-) -> Result<NoContent, StatusCode> {
-    let signature = headers
-        .get("x-line-signature")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
-
-    if !verify(&state.config.line_channel_secret, &body, signature) {
-        error!("Invalid LINE signature");
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
-    let payload: LinePayload = match serde_json::from_slice(&body) {
-        Ok(p) => p,
-        Err(e) => {
-            error!("Invalid JSON body: {}", e);
-            return Err(StatusCode::BAD_REQUEST);
-        }
-    };
-
-    info!(events = payload.events.len(), "webhook received");
-
-    for event in payload.events {
-        if event.event_type != "message" {
-            continue;
-        }
-
-        let message = match event.message {
-            Some(m) if m.message_type == "text" => m,
-            _ => continue,
-        };
-
-        let user_text = match message.text {
-            Some(t) => t.trim().to_string(),
-            None => continue,
-        };
-
-        let reply_token = match event.reply_token {
-            Some(t) => t,
-            None => continue,
-        };
-
-        if user_text.is_empty() || reply_token.is_empty() {
-            continue;
-        }
-
-        let state = Arc::clone(&state);
-        tokio::spawn(async move {
-            process_text_message(state, user_text, reply_token).await;
-        });
-    }
-
-    Ok(NoContent)
-}
-
-async fn process_text_message(state: Arc<AppState>, user_text: String, reply_token: String) {
-    info!("Translating: {:?}", &user_text[..user_text.len().min(100)]);
-
-    let translated = translate(
-        &state.http,
-        &state.config.groq_api_key,
-        &state.config.groq_model,
-        &user_text,
-    )
-    .await;
-
-    info!("Translated: {:?}", &translated[..translated.len().min(100)]);
-
-    if let Err(e) = send_reply(
-        &state.http,
-        &state.config.line_access_token,
-        &reply_token,
-        &translated,
-    )
-    .await
-    {
-        error!("Failed to send LINE reply: {}", e);
-    }
 }
