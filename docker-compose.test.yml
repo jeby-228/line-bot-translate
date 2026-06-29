@@ -7,7 +7,7 @@ services:
     environment:
       GROQ_API_KEY: "test-dummy-key"
       LINE_ACCESS_TOKEN: "test-token"
-      # 刻意不設定 LINE_CHANNEL_SECRET，使簽章驗證在測試時自動略過
+      SKIP_LINE_SIGNATURE_VERIFY: "true"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/"]
       interval: 5s

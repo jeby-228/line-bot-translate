@@ -21,7 +21,7 @@ pub async fn health_check() -> Json<Value> {
 /// LINE Webhook 入口
 ///
 /// 接收 LINE Platform 傳來的事件，對文字訊息進行中↔印尼文翻譯後回覆。
-/// 需帶有正確的 `X-Line-Signature` header（開發環境可不帶）。
+/// 需帶有正確的 `X-Line-Signature` header（或設定 `SKIP_LINE_SIGNATURE_VERIFY=true` 於開發環境）。
 pub async fn webhook_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -32,7 +32,9 @@ pub async fn webhook_handler(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    if !verify(&state.config.line_channel_secret, &body, signature) {
+    if !state.config.skip_line_signature_verify
+        && !verify(&state.config.line_channel_secret, &body, signature)
+    {
         error!("Invalid LINE signature");
         return Err(StatusCode::BAD_REQUEST);
     }

@@ -1,6 +1,6 @@
 # 這些測試不會觸發真實的 Groq / LINE API 呼叫，
 # 僅驗證 webhook 端點的 HTTP 層行為（解析、錯誤處理）。
-# 測試容器未設定 LINE_CHANNEL_SECRET，因此簽章驗證會自動略過。
+# 測試容器未設定 LINE_CHANNEL_SECRET，並以 SKIP_LINE_SIGNATURE_VERIFY=true 略過簽章驗證。
 
 # 1. 健康檢查應回傳 200
 GET {{host}}/
