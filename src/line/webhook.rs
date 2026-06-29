@@ -5,7 +5,7 @@ pub struct LinePayload {
     pub events: Vec<Event>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
     #[serde(rename = "type")]
@@ -14,7 +14,7 @@ pub struct Event {
     pub message: Option<Message>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Message {
     #[serde(rename = "type")]
     pub message_type: String,
