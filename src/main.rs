@@ -3,6 +3,7 @@ mod config;
 mod groq;
 mod handlers;
 mod line;
+mod locale;
 mod service;
 
 use std::{env, sync::Arc};
@@ -16,7 +17,7 @@ use tracing::{Level, info};
 
 use app::AppState;
 use config::Config;
-use handlers::{check_api_key, health_check, webhook_handler};
+use handlers::{check_api_key, health_check, translate_handler, webhook_handler};
 
 #[tokio::main]
 async fn main() {
@@ -45,10 +46,14 @@ async fn main() {
 
     let state = Arc::new(AppState { config, http });
 
+    let v1 = Router::new()
+        .route("/{locale}/translations", post(translate_handler))
+        .route("/{locale}/webhook", post(webhook_handler))
+        .route("/{locale}/check-api-key", get(check_api_key));
+
     let app = Router::new()
         .route("/", get(health_check))
-        .route("/webhook", post(webhook_handler))
-        .route("/check-api-key", get(check_api_key))
+        .nest("/v1", v1)
         .with_state(state)
         .layer(
             TraceLayer::new_for_http()
