@@ -5,9 +5,10 @@ use tracing::{error, info};
 use crate::app::AppState;
 use crate::groq::client::translate;
 use crate::line::{reply::send_reply, webhook::Event};
+use crate::locale::Locale;
 
 /// 將 webhook 事件分派到背景任務處理。
-pub fn dispatch_events(state: Arc<AppState>, events: Vec<Event>) {
+pub fn dispatch_events(state: Arc<AppState>, locale: Locale, events: Vec<Event>) {
     for event in events {
         let event_type = event.event_type.clone();
 
@@ -55,6 +56,7 @@ pub fn dispatch_events(state: Arc<AppState>, events: Vec<Event>) {
         tokio::spawn(async move {
             process_text_message(
                 state,
+                locale,
                 source_type,
                 user_id,
                 message_id,
@@ -68,15 +70,19 @@ pub fn dispatch_events(state: Arc<AppState>, events: Vec<Event>) {
 
 async fn process_text_message(
     state: Arc<AppState>,
+    locale: Locale,
     source_type: Option<String>,
     user_id: Option<String>,
     message_id: Option<String>,
     user_text: String,
     reply_token: String,
 ) {
+    let locale_config = state.config.locale(locale);
+    let system_prompt = locale.system_prompt();
     let text_preview = &user_text[..user_text.len().min(100)];
 
     info!(
+        locale = locale.code(),
         source_type = source_type.as_deref().unwrap_or("unknown"),
         user_id = user_id.as_deref().unwrap_or("unknown"),
         message_id = message_id.as_deref().unwrap_or("unknown"),
@@ -88,12 +94,14 @@ async fn process_text_message(
         &state.http,
         &state.config.groq_api_key,
         &state.config.groq_model,
+        &system_prompt,
         &user_text,
     )
     .await;
 
     let translation_preview = &translated[..translated.len().min(100)];
     info!(
+        locale = locale.code(),
         source_type = source_type.as_deref().unwrap_or("unknown"),
         user_id = user_id.as_deref().unwrap_or("unknown"),
         message_id = message_id.as_deref().unwrap_or("unknown"),
@@ -103,13 +111,14 @@ async fn process_text_message(
 
     if let Err(e) = send_reply(
         &state.http,
-        &state.config.line_access_token,
+        &locale_config.line_access_token,
         &reply_token,
         &translated,
     )
     .await
     {
         error!(
+            locale = locale.code(),
             source_type = source_type.as_deref().unwrap_or("unknown"),
             user_id = user_id.as_deref().unwrap_or("unknown"),
             message_id = message_id.as_deref().unwrap_or("unknown"),

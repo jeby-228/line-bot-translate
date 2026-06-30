@@ -6,7 +6,8 @@ services:
     build: .
     environment:
       GROQ_API_KEY: "test-dummy-key"
-      LINE_ACCESS_TOKEN: "test-token"
+      TH_LINE_ACCESS_TOKEN: "test-th-token"
+      ID_LINE_ACCESS_TOKEN: "test-id-token"
       SKIP_LINE_SIGNATURE_VERIFY: "true"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/"]
